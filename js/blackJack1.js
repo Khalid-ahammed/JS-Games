@@ -30,6 +30,12 @@ let blackJackGame = {
     Q: 10,
     A: [1, 11],
   },
+  wins: 0,
+  losses: 0,
+  draws: 0,
+  isStand: false,
+  turnsOver: false,
+  standClicked: 0,
 }
 
 const YOU = blackJackGame['you']
@@ -37,6 +43,9 @@ const DEALER = blackJackGame['dealer']
 
 //sounds
 const hitSound = new Audio('./sounds/swish.m4a')
+const winSound = new Audio('./sounds/cash.mp3')
+const lostSound = new Audio('./sounds/aww.mp3')
+
 let randomImages = []
 
 const updateScore = (card, active_player) => {
@@ -77,20 +86,30 @@ const showCard = (active_player) => {
 }
 
 const blackJackHit = (_) => {
-  showCard(YOU)
+  if (blackJackGame['isStand'] === false) {
+    showCard(YOU)
+  }
 }
 
 const blackJackDeal = () => {
-  computeWinner()
-  const removeImages = (container) => {
-    const images = document.querySelector(container).querySelectorAll('img')
-    images.forEach((image) => image.remove())
+  if (blackJackGame['turnsOver'] === true) {
+    blackJackGame['isStand'] = false
+
+    const removeImages = (container) => {
+      const images = document.querySelector(container).querySelectorAll('img')
+      images.forEach((image) => image.remove())
+    }
+    removeImages(YOU['div'])
+    removeImages(DEALER['div'])
+    randomImages = []
+    fixScore(YOU)
+    fixScore(DEALER)
+    document.querySelector('#blackJack-result').textContent = `Let's Play`
+    document.querySelector('#blackJack-result').style.color = 'black'
+
+    blackJackGame['turnsOver'] = false
+    blackJackGame['standClicked'] = 0
   }
-  removeImages(YOU['div'])
-  removeImages(DEALER['div'])
-  randomImages = []
-  fixScore(YOU)
-  fixScore(DEALER)
 }
 
 function fixScore(player) {
@@ -99,10 +118,25 @@ function fixScore(player) {
   document.querySelector(player['scoreSpan']).style.color = 'rgb(123, 190, 190)'
 }
 
-function dealerLogic() {
-  showCard(DEALER)
+//greate thing to sleep
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
+
+async function dealerLogic() {
+  blackJackGame['isStand'] = true
+  while (DEALER['score'] < 16 && blackJackGame['isStand'] === true) {
+    showCard(DEALER)
+    await sleep(800)
+  }
+
+  blackJackGame['turnsOver'] = true
+  blackJackGame['standClicked']++
+  if (blackJackGame['standClicked'] === 1) showResult(computeWinner())
+}
+
 //compute winner and looser\
+//update wins,draws,looses
 function computeWinner() {
   let winner
   let draw = false
@@ -119,8 +153,34 @@ function computeWinner() {
   } else if (YOU['score'] > 21 && DEALER['score'] > 21) {
     draw = true
   }
-  console.log(winner, draw)
-  return { winner, draw }
+
+  return winner
+}
+
+function showResult(winner) {
+  let message, messageColor
+  if (blackJackGame['turnsOver'] === true) {
+    if (winner === YOU) {
+      blackJackGame['wins']++
+      message = 'You Won!'
+      messageColor = 'green'
+      document.querySelector('#wins').textContent = blackJackGame['wins']
+      winSound.play()
+    } else if (winner === DEALER) {
+      blackJackGame['losses']++
+      message = 'You Lost'
+      messageColor = 'red'
+      document.querySelector('#losses').textContent = blackJackGame['losses']
+      lostSound.play()
+    } else {
+      blackJackGame['draws']++
+      message = 'You drew'
+      messageColor = 'black'
+      document.querySelector('#draws').textContent = blackJackGame['draws']
+    }
+    document.querySelector('#blackJack-result').textContent = message
+    document.querySelector('#blackJack-result').style.color = messageColor
+  }
 }
 
 hitBtn.addEventListener('click', blackJackHit)
